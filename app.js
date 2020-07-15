@@ -127,7 +127,7 @@ const promiseUKInfoLoaded =
         .then(data => processUKInfo(data));
 
 // Data processing
-// TODO: Quarantine on return from destination dataset
+// TODO: UK country dataset notes
 
 function processUKInfo(data) {
 
@@ -274,6 +274,8 @@ function setupInfoControl() {
 				const tp = cd.internationalTravelPolicy;
 				// console.log('Hovered over', props, cd);
 	
+				// TODO: Show X, tick or ?/~ next to issues
+
 				this._div.innerHTML = `<h4>${cd.CountryName}</h4>
 				<b>Map Country</b> ${props.ADMIN} (${props.ISO_A3})<br>
 				<b>Travel Policy</b> ${tp.text} (${tp.value})<br>
