@@ -24,6 +24,26 @@ function square(n) {
     return Math.pow(n, 2);
 }
 
+function isEmpty(val){
+    return (val === undefined || val == null || val.length <= 0) ? true : false;
+}
+
+function defVal(x, d) {
+	if(isEmpty(x)) {
+		return d;
+	} else {
+		return x;
+	}
+}
+
+function boolStr(b, d = 'N/A') {
+	if(isEmpty(b)) {
+		return d;
+	} else {
+		return b ? 'Yes' : 'No';
+	}
+}
+
 // Utility constants
 
 const now = new Date();
@@ -107,6 +127,7 @@ const promiseUKInfoLoaded =
         .then(data => processUKInfo(data));
 
 // Data processing
+// TODO: Quarantine on return from destination dataset
 
 function processUKInfo(data) {
 
@@ -116,24 +137,36 @@ function processUKInfo(data) {
 
         console.group();
 
-        // Translate to by-country structure
-        for (const countryName of data.exemptions) {
+		// Translate to by-country structure
+		for(const ruleName in data.rules) {
+			const rule = data.rules[ruleName];
 
-            // Find matching Alpha-3 code for country name in secondary data
-            let countryCode;
-            for (const key in countryData) {
-                if (countryData[key].CountryName === countryName) {
-                    countryCode = key;
-                    break;
-                }
-            }
+			for(const countryName of rule.exemptCountries) {
 
-            if (countryCode) {
-                addCountryData(countryCode, { fcoAllowsTravel: true });
-            } else {
-                console.warn(`Couldn't find country code for ${countryName}`);
-            }
-        }
+				// Find matching Alpha-3 code for country name in secondary data
+				let countryCode;
+				for (const key in countryData) {
+					if (countryData[key].CountryName === countryName) {
+						countryCode = key;
+						break;
+					}
+				}
+
+				if (countryCode) {
+					let o = {};
+
+					if(ruleName == "internationalTravel") {
+						o.fcoAllowsTravel = true;
+					} else if(ruleName == "quarantineOnReturnEngland") {
+						o.quarntineOnReturnToEngland = false;
+					}
+
+					addCountryData(countryCode, o);
+				} else {
+					console.warn(`Couldn't find country code for ${countryName}`);
+				}
+			}
+		}
 
         console.groupEnd();
     });
@@ -244,7 +277,8 @@ function setupInfoControl() {
 				this._div.innerHTML = `<h4>${cd.CountryName}</h4>
 				<b>Map Country</b> ${props.ADMIN} (${props.ISO_A3})<br>
 				<b>Travel Policy</b> ${tp.text} (${tp.value})<br>
-				<b>FCO Exempt</b> ${cd.fcoAllowsTravel ? 'Yes' : 'No'}<br>`;
+				<b>FCO Exempt</b> ${cd.fcoAllowsTravel ? 'Yes' : 'No'}<br>
+				<b>Quarantine on return to England</b> ${boolStr(cd.quarntineOnReturnToEngland, 'Yes')}<br>`;
 			} else {
 				this._div.innerHTML = `<h4>${props.ADMIN} (${props.ISO_A3})</h4>
 				No country data found matching country code or name`;
@@ -262,7 +296,7 @@ function highlightFeature(e) {
 
     layer.setStyle({
         weight: 5,
-        color: '#666',
+        //color: '#666',
         dashArray: '',
         fillOpacity: 0.7
     });
@@ -292,6 +326,7 @@ function onEachFeature(feature, layer) {
 }
 
 // DOM operations
+// TODO: Control for colorByFCOBlock
 
 const promiseDOMStart =
     document.ready
