@@ -52,6 +52,8 @@ const targetDestinationPolicies = {
     '4': 'Ban on all regions or total border closure'
 }
 
+const colorByFCOBlock = true;
+
 // Map variables
 var map, mapInfo;
 var geoJSON;
@@ -197,13 +199,12 @@ function getCountryColor(countryCode, countryName) {
 
 	const a = 0.7;
     if (countryInfo && countryInfo.hasOwnProperty(targetDestinationPoliciesFieldName)) {
-        if (countryInfo.fcoAllowsTravel) {
-            const n = countryInfo[targetDestinationPoliciesFieldName];
-            const x = (1 - n / 4);
-            return `hsla(${120*x}deg,100%,50%,${a})`;
-        } else {
-            return `rgba(0,0,125,${a})`;
-        }
+		const fcoBlockEffect = !(countryInfo.fcoAllowsTravel || !colorByFCOBlock);
+		const l = fcoBlockEffect ? 20 : 50;
+		
+		const n = countryInfo[targetDestinationPoliciesFieldName];
+		const x = (1 - n / 4);
+		return `hsla(${120*x}deg,75%,${l}%,${a})`;
     } else {
         return `rgba(0,0,0,${a})`;
     }
@@ -246,7 +247,7 @@ function setupInfoControl() {
 				<b>FCO Exempt</b> ${cd.fcoAllowsTravel ? 'Yes' : 'No'}<br>`;
 			} else {
 				this._div.innerHTML = `<h4>${props.ADMIN} (${props.ISO_A3})</h4>
-				No country data found matching country code ${props.ISO_A3}`;
+				No country data found matching country code or name`;
 			}
         } else {
             this._div.innerHTML = 'Hover over a country';
@@ -303,7 +304,7 @@ const promiseDOMStart =
                 id: 'mapbox/light-v9',
                 tileSize: 512,
                 zoomOffset: -1
-            }).addTo(map);
+			}).addTo(map);
 
             // Create controls
             setupInfoControl();
