@@ -45,11 +45,11 @@ const urlUKInfo = 'data/uk-info.json';
 const targetDestinationPoliciesFieldName = 'C8_International travel controls';
 const targetDestinationPolicies = {
     // https://github.com/OxCGRT/covid-policy-tracker/blob/master/documentation/codebook.md#containment-and-closure-policies
-    '0': 'no restrictions',
-    '1': 'screening arrivals',
-    '2': 'quarantine arrivals from some or all regions',
-    '3': 'ban arrivals from some regions',
-    '4': 'ban on all regions or total border closure'
+    '0': 'No restrictions',
+    '1': 'Screening arrivals',
+    '2': 'Quarantine arrivals from some or all regions',
+    '3': 'Ban arrivals from some regions',
+    '4': 'Ban on all regions or total border closure'
 }
 
 // Map variables
@@ -70,6 +70,19 @@ function addCountryData(countryCode, data) {
     }
 
     Object.assign(countryData[countryCode], data);
+}
+
+function getCountryInfo(countryCode, countryName) {
+	if(countryData.hasOwnProperty(countryCode)) {
+		return countryData[countryCode];
+	}
+
+	// Fallback to searching by name
+	for (const key in countryData) {
+		if (countryData[key].CountryName === countryName) {
+			return countryData[key]
+		}
+	}
 }
 
 // Load data
@@ -96,7 +109,7 @@ const promiseUKInfoLoaded =
 function processUKInfo(data) {
 
     // Relies on destination policies being loaded
-    promiseDestinationRestrictionsLoaded.then(function () {
+    promiseDestinationRestrictionsLoaded.then(function() {
         console.log('Processing UK info data:', data);
 
         console.group();
@@ -126,7 +139,9 @@ function processUKInfo(data) {
 }
 
 function processDestinationPolicies(data) {
-    const targetCSVField = targetDestinationPoliciesFieldName;
+	const targetCSVField = targetDestinationPoliciesFieldName;
+	
+	console.log('Processing destination policies data:', data);
 
     // Custom filter to find latest entry with C8 info
     // uses date & country ordering of CSV data
@@ -173,29 +188,30 @@ function processDestinationPolicies(data) {
 
 // Data-based styling
 
-function getCountryColor(countryCode) {
-    const countryInfo = countryData[countryCode];
+function getCountryColor(countryCode, countryName) {
+    const countryInfo = getCountryInfo(countryCode, countryName);
 
     if (countryCode == 'GBR') {
         return 'rgba(125,125,125,0)';
     }
 
+	const a = 0.7;
     if (countryInfo && countryInfo.hasOwnProperty(targetDestinationPoliciesFieldName)) {
         if (countryInfo.fcoAllowsTravel) {
             const n = countryInfo[targetDestinationPoliciesFieldName];
-            const x = (1 - n / 4) * 255;
-            return `rgba(${255 - x},${x},0,0.4)`;
+            const x = (1 - n / 4);
+            return `hsla(${120*x}deg,100%,50%,${a})`;
         } else {
-            return 'rgba(0,0,125,0.4)';
+            return `rgba(0,0,125,${a})`;
         }
     } else {
-        return 'rgba(0,0,0,0.5)';
+        return `rgba(0,0,0,${a})`;
     }
 }
 
 function styleCountryOverlay(feature) {
     return {
-        fillColor: getCountryColor(feature.properties.ISO_A3),
+        fillColor: getCountryColor(feature.properties.ISO_A3, feature.properties.ADMIN),
         weight: 2,
         opacity: 1,
         color: 'white',
@@ -218,7 +234,7 @@ function setupInfoControl() {
     // method that we will use to update the control based on feature properties passed
     mapInfo.update = function(props) {
         if(props) {
-			const cd = countryData[props.ISO_A3];
+			const cd = getCountryInfo(props.ISO_A3, props.ADMIN);
 
 			if(cd) {
 				const tp = cd.internationalTravelPolicy;
