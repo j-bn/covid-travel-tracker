@@ -24,7 +24,7 @@ function square(n) {
     return Math.pow(n, 2);
 }
 
-function isEmpty(val){
+function isEmpty(val) {
     return (val === undefined || val == null || val.length <= 0) ? true : false;
 }
 
@@ -104,6 +104,19 @@ function getCountryInfo(countryCode, countryName) {
 		if (countryData[key].CountryName === countryName) {
 			return countryData[key]
 		}
+	}
+}
+
+function runDataChecks() {
+	console.log('Running data checks');
+
+	for(const countryCode in countryData) {
+		const countryInfo = countryData[countryCode];
+
+		// Find any countries which are on one FCO exemption list but not the other
+		// if(countryInfo.fcoAllowsTravel == countryInfo.quarntineOnReturnToEngland) {
+		// 	console.log(countryInfo);
+		// }
 	}
 }
 
@@ -356,5 +369,6 @@ Promise.all([promiseDOMStart, promiseDestinationRestrictionsLoaded, promiseUKInf
         // Apply country borders
         fetch(urlCountryBordersGeoJSON)
             .then(response => response.json())
-            .then(data => geoJSON = L.geoJson(data, { style: styleCountryOverlay, onEachFeature: onEachFeature }).addTo(map));
+			.then(data => geoJSON = L.geoJson(data, { style: styleCountryOverlay, onEachFeature: onEachFeature }).addTo(map))
+			.then(runDataChecks);
     });
