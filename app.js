@@ -246,7 +246,7 @@ function getCountryColor(countryCode, countryName) {
 	const a = 0.7;
     if (countryInfo && countryInfo.hasOwnProperty(targetDestinationPoliciesFieldName)) {
 		const fcoBlockEffect = !(countryInfo.fcoAllowsTravel || !colorByFCOBlock);
-		const l = fcoBlockEffect ? 20 : 50;
+		const l = fcoBlockEffect ? 15 : 50;
 		
 		const n = countryInfo[targetDestinationPoliciesFieldName];
 		const x = (1 - n / 4);
@@ -342,18 +342,35 @@ function onEachFeature(feature, layer) {
 
 // DOM operations
 // TODO: Control for colorByFCOBlock
+// TODO: Attributions for data sources
 
 const promiseDOMStart =
     document.ready
         .then(function () {
 
             // Setup choropleth map
-            map = L.map('map').setView([0, 0], 3);
+			map = L.map('map').setView([0, 0], 3);
+			map.createPane('base');
+			map.createPane('overlay');
+			map.createPane('labels');
 
-            L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=' + mapboxAccessToken, {
-                id: 'mapbox/light-v9',
-                tileSize: 512,
-                zoomOffset: -1
+			map.getPane('labels').style.zIndex = 650;
+			map.getPane('labels').style.pointerEvents = 'none';
+
+            // L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=' + mapboxAccessToken, {
+            //     id: 'mapbox/light-v9',
+            //     tileSize: 512,
+            //     zoomOffset: -1
+			// }).addTo(map);
+
+			let positron = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png', {
+				attribution: '©OpenStreetMap, ©CartoDB',
+				pane: 'base'
+			}).addTo(map);
+
+			let positronLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png', {
+				attribution: '©OpenStreetMap, ©CartoDB',
+				pane: 'labels'
 			}).addTo(map);
 
             // Create controls
@@ -369,6 +386,12 @@ Promise.all([promiseDOMStart, promiseDestinationRestrictionsLoaded, promiseUKInf
         // Apply country borders
         fetch(urlCountryBordersGeoJSON)
             .then(response => response.json())
-			.then(data => geoJSON = L.geoJson(data, { style: styleCountryOverlay, onEachFeature: onEachFeature }).addTo(map))
+			.then(function(data) {
+				geoJSON = L.geoJson(data, {
+					pane: 'overlay',
+					style: styleCountryOverlay,
+					onEachFeature: onEachFeature 
+				}).addTo(map)
+			})
 			.then(runDataChecks);
     });
