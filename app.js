@@ -101,11 +101,13 @@ const countryData = {};
 // Central data handling
 
 function addCountryData(countryCode, data) {
-    if (!countryData.hasOwnProperty(countryCode)) {
-        countryData[countryCode] = {};
-    }
+	if(countryCode) {
+		if (!countryData.hasOwnProperty(countryCode)) {
+			countryData[countryCode] = {};
+		}
 
-    Object.assign(countryData[countryCode], data);
+		Object.assign(countryData[countryCode], data);
+	}
 }
 
 function getCountryInfo(countryCode, countryName) {
@@ -155,7 +157,6 @@ const promiseUKInfoLoaded =
         .then(data => processUKInfo(data));
 
 // Data processing
-// TODO: Get latest data available per-property
 
 function processUKInfo(data) {
 
@@ -244,16 +245,30 @@ function processDestinationPolicies(data) {
             curCountryCode = dataRow.CountryCode;
         }
 
-        if (!curCountryInfo) {
-            // Still searching for latest country info
+        if (true) { // Assume true
+            // Some fields still haven't been populated with a latest value
 
-            if (dataRow.hasOwnProperty(targetCSVField) && dataRow[targetCSVField].length > 0) {
-                curCountryInfo = dataRow;
-            }
+			// Initialise
+			if(!curCountryInfo) {
+				curCountryInfo = {};
+			}
+
+			// Integrate data
+			// cant use Object.assign() because it overwrites (maybe could use it in reverse and then
+			// save dataRow via addCountryData, but this is cleaner
+			for(const propName in dataRow) {
+				// Add data only where the property does not exist and the new value is not empty
+				if(!curCountryInfo.hasOwnProperty(propName) && !isEmpty(dataRow[propName])) {
+					curCountryInfo[propName] = dataRow[propName];
+				}
+			}
+
+			// Save all properties in one go approach
+            // if (dataRow.hasOwnProperty(targetCSVField) && dataRow[targetCSVField].length > 0) {
+            //     curCountryInfo = dataRow;
+            // }
         }
-    }
-
-    // destinationRestrictionsData = byCountryData;
+	}
 }
 
 // Data-based styling
@@ -290,7 +305,6 @@ function styleCountryOverlay(feature) {
 }
 
 // Map interaction
-// TODO: Show indications of covid in each country
 
 function setupInfoControl() {
     mapInfo = L.control();
@@ -305,7 +319,6 @@ function setupInfoControl() {
     mapInfo.update = function(props) {
         if(props) {
 			const cd = getCountryInfo(props.ISO_A3, props.ADMIN);
-			console.log(cd);
 
 			if(cd) {
 				const tp = cd.internationalTravelPolicy;
@@ -409,6 +422,8 @@ const promiseDOMStart =
 
 Promise.all([promiseDOMStart, promiseDestinationRestrictionsLoaded, promiseUKInfoLoaded])
     .then(function() {
+		console.log('Finished processing country data', countryData);
+
         // Apply country borders
         fetch(urlCountryBordersGeoJSON)
             .then(response => response.json())
@@ -418,6 +433,7 @@ Promise.all([promiseDOMStart, promiseDestinationRestrictionsLoaded, promiseUKInf
 					style: styleCountryOverlay,
 					onEachFeature: onEachFeature 
 				}).addTo(map)
-			})
-			.then(runDataChecks);
+			});
+
+		runDataChecks();
     });
