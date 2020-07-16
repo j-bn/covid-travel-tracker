@@ -59,6 +59,8 @@ function siPostfix(n) {
 			return (n / def.multiplier).toFixed(1) + def.postfix;
 		}
 	}
+
+	return n;
 }
 
 // Utility constants
@@ -234,7 +236,10 @@ function processDestinationPolicies(data) {
                 curCountryInfo.internationalTravelPolicy = {
                     value: key,
                     text: targetDestinationPolicies[key]
-                };
+				};
+				if(curCountryInfo.ConfirmedDeaths && curCountryInfo.ConfirmedCases) {
+					curCountryInfo.calculatedCFR = curCountryInfo.ConfirmedDeaths / curCountryInfo.ConfirmedCases * 100;
+				}
 
                 addCountryData(curCountryCode, curCountryInfo);
                 // byCountryData[curCountryCode] = curCountryInfo;
@@ -317,6 +322,8 @@ function setupInfoControl() {
 
     // method that we will use to update the control based on feature properties passed
     mapInfo.update = function(props) {
+		let output = {};
+
         if(props) {
 			const cd = getCountryInfo(props.ISO_A3, props.ADMIN);
 
@@ -331,7 +338,7 @@ function setupInfoControl() {
 				<b>Travel Policy</b> ${tp.text} (${tp.value})<br>
 				<b>FCO Exempt</b> ${cd.fcoAllowsTravel ? 'Yes' : 'No'} ${uiStr(cd.internationalTravelNote)}<br>
 				<b>Quarantine on return to England</b> ${boolStr(cd.quarntineOnReturnToEngland, 'Yes')} ${uiStr(cd.quarntineOnReturnToEnglandNote)}<br>
-				<b>CFR</b> ${(cd.ConfirmedDeaths / cd.ConfirmedCases * 100).toFixed(2)}% (${siPostfix(cd.ConfirmedCases)} / ${siPostfix(cd.ConfirmedDeaths)})<br>
+				<b>CFR</b> ${cd.calculatedCFR.toFixed(2)}% (${siPostfix(cd.ConfirmedDeaths)} / ${siPostfix(cd.ConfirmedCases)})<br>
 				<b>Stringency Index</b> ${cd.StringencyIndexForDisplay}`;
 			} else {
 				this._div.innerHTML = `<h4>${props.ADMIN} (${props.ISO_A3})</h4>
