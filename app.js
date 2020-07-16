@@ -36,11 +36,28 @@ function defVal(x, d) {
 	}
 }
 
+function uiStr(x) {
+	return defVal(x, '');
+}
+
 function boolStr(b, d = 'N/A') {
 	if(isEmpty(b)) {
 		return d;
 	} else {
 		return b ? 'Yes' : 'No';
+	}
+}
+
+const siPostfixes = [
+	// Descending order
+	{ postfix: 'M', multiplier: 1000000 },
+	{ postfix: 'k', multiplier: 1000 }
+]
+function siPostfix(n) {
+	for(const def of siPostfixes) {
+		if(n / def.multiplier > 1) {
+			return (n / def.multiplier).toFixed(1) + def.postfix;
+		}
 	}
 }
 
@@ -79,10 +96,7 @@ var map, mapInfo;
 var geoJSON;
 
 // App variables
-// [TODO] Integrate into one per-country data structure
 const countryData = {};
-// var destinationRestrictionsData;
-// var ukInfoData;
 
 // Central data handling
 
@@ -113,10 +127,11 @@ function runDataChecks() {
 	for(const countryCode in countryData) {
 		const countryInfo = countryData[countryCode];
 
-		// Find any countries which are on one FCO exemption list but not the other
-		// if(countryInfo.fcoAllowsTravel == countryInfo.quarntineOnReturnToEngland) {
-		// 	console.log(countryInfo);
-		// }
+		// FCO exemption lists do not match up (as expected)
+		// e.g. Country							FCO Advice 		England Quarantine
+		// 		Finland (and most of europe)	Exempt			No
+		// 		Estonia, Latvia					Exempt			Yes
+		// checked against online lists
 	}
 }
 
@@ -140,7 +155,7 @@ const promiseUKInfoLoaded =
         .then(data => processUKInfo(data));
 
 // Data processing
-// TODO: UK country dataset notes
+// TODO: Get latest data available per-property
 
 function processUKInfo(data) {
 
@@ -154,7 +169,9 @@ function processUKInfo(data) {
 		for(const ruleName in data.rules) {
 			const rule = data.rules[ruleName];
 
-			for(const countryName of rule.exemptCountries) {
+			for(const exemptEntry of rule.exemptCountries) {
+
+				const countryName = exemptEntry.name;
 
 				// Find matching Alpha-3 code for country name in secondary data
 				let countryCode;
@@ -167,6 +184,11 @@ function processUKInfo(data) {
 
 				if (countryCode) {
 					let o = {};
+
+					// Save notes seperatley
+					if(exemptEntry.note) {
+						o[ruleName + 'Note'] = exemptEntry.note;
+					}
 
 					if(ruleName == "internationalTravel") {
 						o.fcoAllowsTravel = true;
@@ -268,6 +290,7 @@ function styleCountryOverlay(feature) {
 }
 
 // Map interaction
+// TODO: Show indications of covid in each country
 
 function setupInfoControl() {
     mapInfo = L.control();
@@ -282,6 +305,7 @@ function setupInfoControl() {
     mapInfo.update = function(props) {
         if(props) {
 			const cd = getCountryInfo(props.ISO_A3, props.ADMIN);
+			console.log(cd);
 
 			if(cd) {
 				const tp = cd.internationalTravelPolicy;
@@ -292,8 +316,10 @@ function setupInfoControl() {
 				this._div.innerHTML = `<h4>${cd.CountryName}</h4>
 				<b>Map Country</b> ${props.ADMIN} (${props.ISO_A3})<br>
 				<b>Travel Policy</b> ${tp.text} (${tp.value})<br>
-				<b>FCO Exempt</b> ${cd.fcoAllowsTravel ? 'Yes' : 'No'}<br>
-				<b>Quarantine on return to England</b> ${boolStr(cd.quarntineOnReturnToEngland, 'Yes')}<br>`;
+				<b>FCO Exempt</b> ${cd.fcoAllowsTravel ? 'Yes' : 'No'} ${uiStr(cd.internationalTravelNote)}<br>
+				<b>Quarantine on return to England</b> ${boolStr(cd.quarntineOnReturnToEngland, 'Yes')} ${uiStr(cd.quarntineOnReturnToEnglandNote)}<br>
+				<b>CFR</b> ${(cd.ConfirmedDeaths / cd.ConfirmedCases * 100).toFixed(2)}% (${siPostfix(cd.ConfirmedCases)} / ${siPostfix(cd.ConfirmedDeaths)})<br>
+				<b>Stringency Index</b> ${cd.StringencyIndexForDisplay}`;
 			} else {
 				this._div.innerHTML = `<h4>${props.ADMIN} (${props.ISO_A3})</h4>
 				No country data found matching country code or name`;
