@@ -24,6 +24,10 @@ function square(n) {
     return Math.pow(n, 2);
 }
 
+function isNumeric(n) {
+	return !isNaN(parseFloat(n)) && isFinite(n);
+}
+
 function isEmpty(val) {
     return (val === undefined || val == null || val.length <= 0) ? true : false;
 }
@@ -53,14 +57,22 @@ const siPostfixes = [
 	{ postfix: 'M', multiplier: 1000000 },
 	{ postfix: 'k', multiplier: 1000 }
 ]
-function siPostfix(n) {
+function siPostfix(n, decimalPlaces = 1) {
 	for(const def of siPostfixes) {
 		if(n / def.multiplier > 1) {
-			return (n / def.multiplier).toFixed(1) + def.postfix;
+			return (n / def.multiplier).toFixed(decimalPlaces) + def.postfix;
 		}
 	}
 
-	return n;
+	return numStr(n);
+}
+
+function numStr(n, decimalPlaces = 2) {
+	if(typeof n === 'number') {
+		return n.toFixed(decimalPlaces);
+	} else {
+		return '-';
+	}
 }
 
 // Utility constants
@@ -80,6 +92,7 @@ console.log('Date:', todayYMD, todayYMDRaw);
 // https://datahub.io/core/geo-countries
 const urlCountryBordersGeoJSON = 'data/countries.geojson'; // Local at data/countries.geojson or live at https://datahub.io/core/geo-countries/r/countries.geojson
 const urlUKInfo = 'data/uk-info.json';
+const urlGeneralCountryInfo = 'https://restcountries.eu/rest/v2/all';
 
 const targetDestinationPoliciesFieldName = 'C8_International travel controls';
 const targetDestinationPolicies = {
@@ -156,7 +169,12 @@ const promiseDestinationRestrictionsLoaded =
 const promiseUKInfoLoaded =
     fetch(urlUKInfo)
         .then(response => response.json())
-        .then(data => processUKInfo(data));
+		.then(data => processUKInfo(data));
+		
+const promiseGeneralCountryInfoLoaded = 
+	fetch(urlGeneralCountryInfo)
+		.then(response => response.json())
+		.then(data => processGeneralCountryInfo(data));
 
 // Data processing
 
@@ -276,6 +294,16 @@ function processDestinationPolicies(data) {
 	}
 }
 
+function processGeneralCountryInfo(data) {
+	const countries = data;
+	console.log('Processing World Bank countries', data);
+
+	for(const country of countries) {
+		const key = country.alpha3Code;
+		addCountryData(key, { generalInfo: country });
+	}
+}
+
 // Data-based styling
 
 function getCountryColor(countryCode, countryName) {
@@ -328,17 +356,17 @@ function setupInfoControl() {
 			const cd = getCountryInfo(props.ISO_A3, props.ADMIN);
 
 			if(cd) {
-				const tp = cd.internationalTravelPolicy;
-				// console.log('Hovered over', props, cd);
+				const tp = cd.internationalTravelPolicy || {};
 	
 				// TODO: Show X, tick or ?/~ next to issues
 
 				this._div.innerHTML = `<h4>${cd.CountryName}</h4>
 				<b>Map Country</b> ${props.ADMIN} (${props.ISO_A3})<br>
-				<b>Travel Policy</b> ${tp.text} (${tp.value})<br>
+				<b>Travel Policy</b> ${tp.text || '-'} (${tp.value})<br>
 				<b>FCO Exempt</b> ${cd.fcoAllowsTravel ? 'Yes' : 'No'} ${uiStr(cd.internationalTravelNote)}<br>
 				<b>Quarantine on return to England</b> ${boolStr(cd.quarntineOnReturnToEngland, 'Yes')} ${uiStr(cd.quarntineOnReturnToEnglandNote)}<br>
-				<b>CFR</b> ${cd.calculatedCFR.toFixed(2)}% (${siPostfix(cd.ConfirmedDeaths)} / ${siPostfix(cd.ConfirmedCases)})<br>
+				<b>By Population</b> (${siPostfix(cd.generalInfo.population)}) ${siPostfix(cd.casesPerMillion)} cases and ${siPostfix(cd.deathsPerMillion)} deaths per million<br>
+				<b>CFR</b> ${numStr(cd.calculatedCFR)}% (${siPostfix(cd.ConfirmedDeaths)} / ${siPostfix(cd.ConfirmedCases)})<br>
 				<b>Stringency Index</b> ${cd.StringencyIndexForDisplay}`;
 			} else {
 				this._div.innerHTML = `<h4>${props.ADMIN} (${props.ISO_A3})</h4>
@@ -427,7 +455,7 @@ const promiseDOMStart =
 // Data-conditional map operations
 // [TODO] Integrate other data-dependant operations above this
 
-Promise.all([promiseDOMStart, promiseDestinationRestrictionsLoaded, promiseUKInfoLoaded])
+Promise.all([promiseDOMStart, promiseDestinationRestrictionsLoaded, promiseUKInfoLoaded, promiseGeneralCountryInfoLoaded])
     .then(function() {
 		console.log('Finished processing country data', countryData);
 
@@ -441,6 +469,16 @@ Promise.all([promiseDOMStart, promiseDestinationRestrictionsLoaded, promiseUKInf
 					onEachFeature: onEachFeature 
 				}).addTo(map)
 			});
+
+		// Compute fields based on multiple datasets
+		for(const key in countryData) {
+			const cd = countryData[key];
+
+			if(cd.generalInfo && cd.ConfirmedDeaths && cd.ConfirmedCases) {
+				cd.casesPerMillion = cd.ConfirmedCases / cd.generalInfo.population * 1E6;
+				cd.deathsPerMillion = cd.ConfirmedDeaths / cd.generalInfo.population * 1E6;
+			}
+		}
 
 		runDataChecks();
     });
