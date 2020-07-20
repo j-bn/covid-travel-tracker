@@ -78,7 +78,7 @@ console.log('Date:', todayYMD, todayYMDRaw);
 //
 
 // https://datahub.io/core/geo-countries
-const urlCountryBordersGeoJSON = 'data/countries.geojson'; // Live at https://datahub.io/core/geo-countries/r/countries.geojson
+const urlCountryBordersGeoJSON = 'data/countries.geojson'; // Local at data/countries.geojson or live at https://datahub.io/core/geo-countries/r/countries.geojson
 const urlUKInfo = 'data/uk-info.json';
 
 const targetDestinationPoliciesFieldName = 'C8_International travel controls';
@@ -141,7 +141,7 @@ function runDataChecks() {
 
 // Load data
 
-const oxcgrtURL = 'data/OxCGRT_latest.csv';
+const oxcgrtURL = 'https://raw.githubusercontent.com/OxCGRT/covid-policy-tracker/master/data/OxCGRT_latest.csv'; // Local copy at data/OxCGRT_latest.csv
 const promiseDestinationRestrictionsLoaded =
     fetch(oxcgrtURL)
         .then(response => response.text())
