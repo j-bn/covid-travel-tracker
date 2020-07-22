@@ -406,11 +406,17 @@ function zoomToFeature(e) {
     map.fitBounds(e.target.getBounds());
 }
 
+function openFCOAdvicePage(e) {
+	const name = e.target.feature.properties.ADMIN;
+
+	window.open('https://www.gov.uk/foreign-travel-advice/' + name.toLowerCase(), '_blank');
+}
+
 function onEachFeature(feature, layer) {
     layer.on({
         mouseover: highlightFeature,
         mouseout: resetHighlight,
-        click: zoomToFeature
+        click: openFCOAdvicePage
     });
 }
 
